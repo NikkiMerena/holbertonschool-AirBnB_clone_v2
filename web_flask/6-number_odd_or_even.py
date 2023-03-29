@@ -49,11 +49,14 @@ def number_template(n):
 def number_odd_or_even(n):
     if isinstance(n, int):
         if n % 2 == 0:
-            return render_template('6-number_odd_or_even.html', n=n, type='even')
+            return render_template('6-number_odd_or_even.html',
+                                   n=n, type='even')
     else:
-            return render_template('6-number_odd_or_even.html', n=n, type='odd')
+        return render_template('6-number_odd_or_even.html',
+                               n=n, type='odd')
     else:
         return abort(404)
+
 
 if __name__ == '__main__':
     """Start Flask web application"""
