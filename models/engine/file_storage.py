@@ -1,19 +1,28 @@
 #!/usr/bin/python3
 """This module defines a class to manage file storage for hbnb clone"""
 import json
+from models import city, place, review, state, amenity, user, base_model
 
 
 class FileStorage:
     """This class manages storage of hbnb models in JSON format"""
     __file_path = 'file.json'
     __objects = {}
+    CDIC = {
+        'City': city.City,
+        'Place': place.Place,
+        'Review': review.Review,
+        'State': state.State,
+        'Amenity': amenity.Amenity,
+        'User': user.User
+    }
 
     def all(self, cls=None):
         """Returns a dictionary of models currently in storage
         if cls specified, only returns that class"""
         if cls is not None:
-            if type(cls) is str:
-                cls = eval(cls)
+            if cls in self.CDIC.keys():
+                cls = self.CDIC.get(cls)
             spec_rich = {}
             for ky, vl in self.__objects.items():
                 if cls == type(vl):
@@ -34,16 +43,6 @@ class FileStorage:
                 temp[key] = val.to_dict()
             json.dump(temp, f)
 
-    def delete(self, obj=None):
-        """Delete obj From dictionary"""
-        if obj is None:
-            return
-
-        key_val = "{}.{}".format(type(obj).__name__, obj.id)
-        if FileStorage.__objects.get(key_val) is not None:
-            del FileStorage.__objects[key_val]
-        self.save()
-
     def reload(self):
         """Loads storage dictionary from file"""
         from models.base_model import BaseModel
@@ -55,10 +54,10 @@ class FileStorage:
         from models.review import Review
 
         classes = {
-                        'BaseModel': BaseModel, 'User': User, 'Place': Place,
-                        'State': State, 'City': City, 'Amenity': Amenity,
-                        'Review': Review
-                    }
+                    'BaseModel': BaseModel, 'User': User, 'Place': Place,
+                    'State': State, 'City': City, 'Amenity': Amenity,
+                    'Review': Review
+                  }
         try:
             temp = {}
             with open(FileStorage.__file_path, 'r') as f:
@@ -68,6 +67,13 @@ class FileStorage:
         except FileNotFoundError:
             pass
 
+    def delete(self, obj=None):
+        """if obj deletes obj from __objects"""
+        try:
+            key = obj.__class__.__name__ + "." + obj.id
+            del self.__objects[key]
+        except (AttributeError, KeyError):
+            pass
+
     def close(self):
-        """method calls reload"""
         self.reload()

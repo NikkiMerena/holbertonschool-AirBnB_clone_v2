@@ -1,19 +1,22 @@
 #!/usr/bin/python3
 from os import getenv
-from models.base_model import Base, BaseModel
-from models.review import Review
-from models.city import City
-from models.state import State
-from models.amenity import Amenity
-from models.user import User
-from models.place import Place
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, MetaData
 from sqlalchemy.orm import sessionmaker, scoped_session
+from models.base_model import Base, BaseModel
+from models import city, place, review, state, amenity, user
 
 
 class DBStorage:
     __engine = None
     __session = None
+    CDIC = {
+        'City': city.City,
+        'Place': place.Place,
+        'Review': review.Review,
+        'State': state.State,
+        'Amenity': amenity.Amenity,
+        'User': user.User
+    }
 
     def __init__(self):
         self.__engine = create_engine("mysql+mysqldb://{}:{}@{}/{}".format(
@@ -22,8 +25,6 @@ class DBStorage:
                                             getenv('HBNB_MYSQL_HOST'),
                                             getenv('HBNB_MYSQL_DB')),
                                       pool_pre_ping=True)
-        if getenv('HBNB_ENV') == 'test':
-            Base.metadata.drop_all(self.__engine)
 
     def reload(self):
         Base.metadata.create_all(self.__engine)
@@ -42,20 +43,30 @@ class DBStorage:
             self.__session.delete(obj)
 
     def all(self, cls=None):
-        cls_lst = ["Review", "City", "State", "User", "Place", "Amenity"]
-        obj_lst = []
+        obj_dct = {}
+        qry = []
         if cls is None:
-            for cls_type in cls_lst:
-                obj_lst.extend(self.__session.query(cls_type).all())
+            for cls_typ in DBStorage.CDIC.values():
+                qry.extend(self.__session.query(cls_typ).all())
         else:
-            if type(cls) == str:
-                cls = eval(cls)
-            obj_lst = self.__session.query(cls).all()
-        return {"{}.{}".format(type(obj).__name__,
-                               obj.id): obj for obj in obj_lst}
+            if cls in self.CDIC.keys():
+                cls = self.CDIC.get(cls)
+            qry = self.__session.query(cls)
+        for obj in qry:
+            obj_key = "{}.{}".format(type(obj).__name__, obj.id)
+            obj_dct[obj_key] = obj
+        return obj_dct
+
+    def gettables(self):
+        inspector = inspect(self.__engine)
+        return inspector.get_table_names()
 
     def close(self):
         self.__session.close()
 
-    def total(self):
-        return len(self.__session.query(Review).all())
+    def hcf(self, cls):
+        metadata = MetaData()
+        metadata.reflect(bind=self.__engine)
+        table = metadata.tables.get(cls.__tablename__)
+        self.__session.execute(table.delete())
+        self.save()
